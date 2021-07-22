@@ -64,7 +64,8 @@ will do the following:
        `    "job": "leader"`
        `}`
 
-    4. Finally, we place the cursor over the method of our request and call
+    4. Finally, we place the cursor over the method of our request or below
+       and call
        `rest.nvim`!.
        `:lua require('rest-nvim').run()`
 
