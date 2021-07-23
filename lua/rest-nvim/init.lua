@@ -287,10 +287,11 @@ local function end_request(bufnr)
 	local curpos = vim.fn.getcurpos()
 	local linenumber = curpos[2]
 	local oldlinenumber = linenumber
+	local last_line = vim.fn.line('$')
 
 	-- start searching for next request from the next line
 	-- as the current line does contain the current, not the next request
-	if linenumber < vim.fn.line('$') then
+	if linenumber < last_line then
 		linenumber = linenumber + 1
 	end
 	go_to_line(bufnr, linenumber)
@@ -303,7 +304,39 @@ local function end_request(bufnr)
 
 	-- restore cursor position
 	go_to_line(bufnr, oldlinenumber)
-	return next > 1 and next - 1 or vim.fn.line('$')
+	if next > 1 and next < last_line then
+		return next - 1
+	elseif next == last_line and oldlinenumber < last_line then
+		return next - 1
+	else
+		return last_line
+	end
+end
+
+local function highlight_request(bufnr, startline, endline)
+	print(
+		'start_highlight. startline = '
+			.. startline
+			.. ' ; endline = '
+			.. endline
+	)
+	local ns_id = vim.api.nvim_create_namespace('rest.nvim')
+
+	local end_col = string.len(vim.fn.getline(endline))
+
+	vim.highlight.range(
+		bufnr,
+		ns_id,
+		'Search',
+		{ startline - 1, 0 },
+		{ endline - 1, end_col }
+	)
+	-- vim.api.nvim_buf_clear_namespace(bufnr, ns_id, 0,-1)
+	vim.defer_fn(function()
+		vim.api.nvim_buf_clear_namespace(bufnr, ns_id, 0, -1)
+	end, 400)
+
+	return ns_id
 end
 
 -- run will retrieve the required request information from the current buffer
@@ -318,6 +351,9 @@ rest.run = function(verbose)
 		return
 	end
 	local end_line = end_request()
+
+	local ns_id = highlight_request(bufnr, start_line, end_line)
+
 	go_to_line(bufnr, start_line)
 
 	local parsed_url = parse_url(vim.fn.getline(start_line))
